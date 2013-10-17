@@ -55,6 +55,7 @@ class Lexer(object):
             {
                 'f': [2]
             },
+            {}, # 2
             {}, # 3
             {}, # 4
             {}, # 5
@@ -108,7 +109,7 @@ class Lexer(object):
             },
             {}, #30
             {
-                'letter': [31],
+                'alpha': [31],
                 '_': [31],
                 'digit': [31]
             },
@@ -155,22 +156,25 @@ class Lexer(object):
 
     def get_next_token(self):
         input_ = self._getchar()
+        self.state = set([0])
         while input_ in self.stop_chars:
-            input_ = self._getchar()
             self.current += 1
+            input_ = self._getchar()
         if input_ is None:
             return None
         lexeme_begin = self.current
         while input_ not in self.stop_chars and input_ is not None:
             next_state = set()
+            should_alpha = input_.isalpha()
+            # cheat
             if self.is_digit(input_):
                 input_ = 'digit'
-            should_alpha = input_.isalpha()
             for state in self.state:
                 transition = self.goto_nfa[state].get(input_)
                 if transition is not None:
                     for new_state in transition:
                         next_state.add(new_state)
+                # cheat
                 if should_alpha:
                     transition = self.goto_nfa[state].get('alpha')
                     if transition is not None:
@@ -179,13 +183,15 @@ class Lexer(object):
             self.state = next_state
             self.current += 1
             input_ = self._getchar()
-        self.current += 1
-        print lexeme_begin, self.current
         lexeme = self.code[lexeme_begin:self.current].strip()
         if len(self.state) == 0:
             raise ValueError('Unknown lexeme: ' + lexeme)
-        lexeme_type = self.final_states.get(min(self.state))
-        if lexeme_type is None:
+
+        for state in sorted(self.state):
+            lexeme_type = self.final_states.get(state)
+            if lexeme_type is not None:
+                break
+        else:
             raise ValueError('Unknown lexeme: ' + lexeme)
         return Token(lexeme_type, lexeme)
 
@@ -194,13 +200,24 @@ if __name__ == '__main__':
     if_ = Lexer('if').get_next_token()
     print if_, if_.lexeme, if_.type_
 
-    multiple_tokens = Lexer(' if abc 3 123  ')
+    multiple_tokens = Lexer(' if abc 3 123  ( ) { } ; < <= ==  = > ifi')
     t = multiple_tokens.get_next_token()
     # should print:
     # Token instance, if, IF
     # Token instance, abc, ID
     # Token instance, 3, NUMBER
     # Token instance, 123, NUMBER
+    # Token instance, (, OPEN_PARENS
+    # Token instance, ), CLOSE_PARENS
+    # Token instance, {, OPEN_BRACES
+    # Token instance, }, CLOSE_BRACES
+    # Token instance, ;, SEMICOLON
+    # Token instance, <, RELOP
+    # Token instance, <=, RELOP
+    # Token instance, ==, RELOP
+    # Token instance, =, ASSIGN
+    # Token instance, >, RELOP
+    # Token instance, ifi, ID
     while t is not None:
         print t, t.lexeme, t.type_
         t = multiple_tokens.get_next_token()
