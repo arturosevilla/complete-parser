@@ -277,9 +277,6 @@ class Lexer(object):
         input_ = self.code[self.current]
         return input_
 
-    def is_digit(self, character):
-        return character in '0123456789'
-
     def get_next_token(self):
         input_ = self._getchar()
         self.state = set([0])
