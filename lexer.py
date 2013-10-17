@@ -289,13 +289,15 @@ class Lexer(object):
         if input_ is None:
             return None
         lexeme_begin = self.current
-        while input_ not in self.stop_chars and input_ is not None:
+        while input_ is not None:
             next_state = set()
             for state in self.state:
                 transition = self.goto_nfa[state].get(input_)
                 if transition is not None:
                     for new_state in transition:
                         next_state.add(new_state)
+            if len(next_state) == 0:
+                break
             self.state = next_state
             self.current += 1
             input_ = self._getchar()
@@ -303,11 +305,16 @@ class Lexer(object):
         if len(self.state) == 0:
             raise ValueError('Unknown lexeme: ' + lexeme)
 
-        for state in sorted(self.state):
-            lexeme_type = self.final_states.get(state)
-            if lexeme_type is not None:
-                break
-        else:
+        # we look for the first defined rule
+        min_state = lexeme_type = None
+        for state in self.state:
+            if state < min_state or min_state is None:
+                possible_type = self.final_states.get(state)
+                if possible_type is not None:
+                    min_state = state
+                    lexeme_type = possible_type
+
+        if lexeme_type is None:
             raise ValueError('Unknown lexeme: ' + lexeme)
         return Token(lexeme_type, lexeme)
 
@@ -316,7 +323,7 @@ if __name__ == '__main__':
     if_ = Lexer('if').get_next_token()
     print if_, if_.lexeme, if_.type_
 
-    multiple_tokens = Lexer(' if abc 3 123  ( ) { } ; < <= ==  = > ifi')
+    multiple_tokens = Lexer(' if abc 3 123  ( ) { } ; < <= ==  = > ifi+3')
     t = multiple_tokens.get_next_token()
     # should print:
     # Token instance, if, IF
@@ -334,6 +341,8 @@ if __name__ == '__main__':
     # Token instance, =, ASSIGN
     # Token instance, >, RELOP
     # Token instance, ifi, ID
+    # Token instance, +, OPERATOR
+    # Token instance, 3, NUMBER
     while t is not None:
         print t, t.lexeme, t.type_
         t = multiple_tokens.get_next_token()
