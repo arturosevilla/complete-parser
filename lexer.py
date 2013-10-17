@@ -219,16 +219,16 @@ class Lexer(object):
                 'Y': [31],
                 'Z': [31],
                 '_': [31],
-                '0': [32],
-                '1': [32],
-                '2': [32],
-                '3': [32],
-                '4': [32],
-                '5': [32],
-                '6': [32],
-                '7': [32],
-                '8': [32],
-                '9': [32]
+                '0': [31],
+                '1': [31],
+                '2': [31],
+                '3': [31],
+                '4': [31],
+                '5': [31],
+                '6': [31],
+                '7': [31],
+                '8': [31],
+                '9': [31]
             },
             {
                 '0': [32],
@@ -286,6 +286,7 @@ class Lexer(object):
         if input_ is None:
             return None
         lexeme_begin = self.current
+        # NFA simulation
         while input_ is not None:
             next_state = set()
             for state in self.state:
@@ -320,7 +321,7 @@ if __name__ == '__main__':
     if_ = Lexer('if').get_next_token()
     print if_, if_.lexeme, if_.type_
 
-    multiple_tokens = Lexer(' if abc 3 123  ( ) { } ; < <= ==  = > ifi+3')
+    multiple_tokens = Lexer(' if abc 3 123  ( ) { } ; < <= ==  = > ifi+3 ifabc123')
     t = multiple_tokens.get_next_token()
     # should print:
     # Token instance, if, IF
@@ -340,6 +341,7 @@ if __name__ == '__main__':
     # Token instance, ifi, ID
     # Token instance, +, OPERATOR
     # Token instance, 3, NUMBER
+    # Token instance, ifabc123, ID
     while t is not None:
         print t, t.lexeme, t.type_
         t = multiple_tokens.get_next_token()
