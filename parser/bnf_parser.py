@@ -86,9 +86,6 @@ class Grammar(object):
                 elif sym.name != prod.variable.name:
                     pending[prod.variable.name].add(sym.name)
 
-        print self.cached_follows
-        print pending
-
         for var, pend in pending.iteritems():
             self._update_follow(pending, var)
 
