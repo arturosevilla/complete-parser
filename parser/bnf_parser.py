@@ -113,7 +113,6 @@ class Grammar(object):
         return self.cached_follows[symbol]
 
 
-
 class Production(object):
     def __init__(self, variable, production):
         self.variable = variable
@@ -144,19 +143,44 @@ class Production(object):
 class Item(object):
     def __init__(self, production, position):
         self.variable = production.variable
+        self._original_prod = production
         self.production = production.production[:position]
         self.production.append('.')
         self.production.extend(production.production[position:])
+
+    def advance(self):
+        pos = self.production.find('.')
+        if pos == len(self.production) - 1:
+            return self
+        return Item(self._original_prod, pos + 1)
+
+    def __eq__(self, other):
+        if not isinstance(other, Item):
+            return False
+        if other.variable != self.variable:
+            return False
+        if len(other.production) != len(self.production):
+            return False
+        for p, q in zip(other.production, self.production):
+            if p != q:
+                return False
+        return True
 
 
 class Variable(object):
     def __init__(self, name):
         self.name = re.sub('<|>', '', name)
 
+    def __eq__(self, other):
+        return isinstance(other, Variable) and other.name == self.name
+
 
 class Terminal(object):
     def __init__(self, name):
         self.name = re.sub('"', '', name)
+
+    def __eq__(self, other):
+        return isinstance(other, Terminal) and other.name == self.name
 
 
 def build_grammar(code):
