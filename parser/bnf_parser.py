@@ -119,6 +119,35 @@ class Production(object):
         self.variable = variable
         self.production = production
 
+    def _get_prod_string(self):
+        buff = ''
+        for sym in self.production:
+            if sym == '':
+                buff += '(empty)'
+            elif isinstance(sym, Terminal):
+                buff += '"' + sym.name + '"'
+            else:
+                buff += '<' + sym.name + '>'
+        return buff
+
+    def __str__(self):
+        return self.variable.name + ' -> ' + self._get_prod_string()
+
+    def __repr__(self):
+        return str(self)
+
+    def generate_all_items(self):
+        for i in xrange(len(self.production)):
+            yield Item(self, i)
+
+
+class Item(object):
+    def __init__(self, production, position):
+        self.variable = production.variable
+        self.production = production.production[:position]
+        self.production.append('.')
+        self.production.extend(production.production[position:])
+
 
 class Variable(object):
     def __init__(self, name):
