@@ -1,0 +1,5 @@
+<E> ::= <T> <E-prime>
+<E-prime> ::= "SUM_OPERATOR" <T> <E-prime> | ""
+<T> ::= <F> <T-prime>
+<T-prime> ::= "MUL_OPERATOR" <F> <T-prime> | ""
+<F> ::= "OPEN_PARENS" <E> "CLOSE_PARENS" | "ID"

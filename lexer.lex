@@ -8,7 +8,8 @@ while			WHILE
 >=			RELOP
 ;			SEMICOLON
 ==			RELOP
-+|\*|/|-		OPERATOR
+\*|/		MUL_OPERATOR
++|-		SUM_OPERATOR
 {			OPEN_BRACE
 }			CLOSE_BRACE
 [A-Za-z_][A-Za-z0-9]*	ID

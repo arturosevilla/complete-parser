@@ -1,0 +1,9 @@
+Compiler tools
+
+As of now it contains:
+* flex-like tool for python.
+* BNF parser
+* First/Follow functions
+* Testing examples: python -m parser.test_build_grammar parser/example.bnf
+
+In order to use the parsing examples, first run make to compile the BNF lexer.

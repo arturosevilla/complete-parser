@@ -260,7 +260,7 @@ class Flexer(object):
             token = self.match(
                 lexer,
                 ['ESCAPE', 'OPEN_PARENS', 'CLOSE_PARENS', 'KLEENE',
-                 'OPEN_BRACKET', 'CLOSE_BRACKET']
+                 'OPEN_BRACKET', 'CLOSE_BRACKET', 'OR']
             )
             if self.verbose:
                 print prefix + '> Char expression: ' + token.lexeme
@@ -300,13 +300,14 @@ class Flexer(object):
         if token.type_ == 'CHAR':
             next_token = self.peek(lexer, or_context=True)
             if next_token is not None and next_token.type_ == 'DASH':
-                self.match(lexer, 'DASH')
-                end = self.match(lexer, ['CHAR', 'ESCAPE'])
+                self.match(lexer, 'DASH', or_context=True)
+                end = self.match(lexer, ['CHAR', 'ESCAPE'], or_context=True)
                 if end.type_ == 'ESCAPE':
                     end = self.match(
                         lexer,
                         ['ESCAPE', 'OPEN_PARENS', 'CLOSE_PARENS', 'KLEENE',
-                         'OPEN_BRACKET', 'CLOSE_BRACKET', 'DASH']
+                         'OPEN_BRACKET', 'CLOSE_BRACKET', 'DASH', 'OR'],
+                        or_context=True
                     )
 
                 if ord(end.lexeme) < ord(token.lexeme):
@@ -328,7 +329,8 @@ class Flexer(object):
         token = self.match(
             lexer,
             ['ESCAPE', 'OPEN_PARENS', 'CLOSE_PARENS', 'KLEENE',
-             'OPEN_BRACKET', 'CLOSE_BRACKET', 'DASH']
+             'OPEN_BRACKET', 'CLOSE_BRACKET', 'DASH', 'OR'],
+            or_context=True
         )
         if self.verbose:
             print prefix + '> Char expression: ' + token.lexeme

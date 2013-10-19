@@ -1,0 +1,5 @@
+<E> ::= <E> "SUM_OPERATOR" <T>
+<E> ::= <T>
+<T> ::= <T> "MUL_OPERATOR" <F>
+<T> ::= <F>
+<F> ::= "NUMBER" | "OPEN_PARENS" <E> "CLOSE_PARENS"
