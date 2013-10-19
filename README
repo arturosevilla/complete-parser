@@ -5,5 +5,6 @@ As of now it contains:
 * BNF parser
 * First/Follow functions
 * Testing examples: python -m parser.test_build_grammar parser/example.bnf
+* Closure/Goto for SLR
 
 In order to use the parsing examples, first run make to compile the BNF lexer.
