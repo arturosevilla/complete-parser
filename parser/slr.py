@@ -1,4 +1,5 @@
 from .bnf_parser import Item, Variable, Terminal
+from itertools import chain
 
 def closure(items, grammar):
     closed = set(items)
@@ -39,4 +40,25 @@ def _individual_goto(item, symbol, grammar):
         return set()
     new_item = item.advance()
     return closure(new_item, grammar)
+
+def items(grammar):
+    c = closure(
+        [Item(grammar.get_productions_for_variable('#')[0], 0)],
+        grammar
+    )
+    added = True
+    while added:
+        added = False
+        update_set = set()
+        last_size = len(c)
+        for item in c:
+            for symbol in chain(grammar.terminals, grammar.variables):
+                goto_symbols = goto(items, symbol, grammar)
+                if len(goto_symbols) > 0:
+                    update_set.update(goto_symbols)
+        if len(update_set) > 0:
+            c.update(update_set)
+        added = len(c) > last_size
+        last_size = len(c)
+    return c
 
