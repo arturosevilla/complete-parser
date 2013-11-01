@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from bnf_parser import build_grammar
+from bnf_parser import build_grammar_and_commands
 from slr import items
 from itertools import chain
 import sys
@@ -8,7 +8,7 @@ if __name__ == '__main__':
     filename = sys.argv[1]
     with open(filename) as f:
         code = f.read()
-    g = build_grammar(code)
+    g, commands = build_grammar_and_commands(code)
     print str(g.variables)
     print str(g.terminals)
     print str(g.productions)

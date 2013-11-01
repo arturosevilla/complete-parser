@@ -4,6 +4,7 @@ Simple parser and structure containing the grammar defined in BNF
 
 from bnf_lexer import Lexer
 import re
+import os
 
 class UnexpectedBNFToken(Exception):
     def __init__(self, msg):
@@ -210,16 +211,26 @@ class Terminal(object):
         return isinstance(other, Terminal) and other.name == self.name
 
 
-def build_grammar(code):
+class ImportCommand(object):
+    
+    def __init__(self, filename, cwd):
+        self.filename = os.path.normpath(os.path.join(cwd, filename))
+
+
+def build_grammar_and_commands(code, cwd):
     lines = [line.strip() for line in code.strip().split('\n')
              if line.strip()[0] != '#' and len(line.strip()) > 0]
     rules = []
     terminals = set()
     variables = set()
     start_symbol = None
+    commands = []
     for line in lines:
         lexer = Lexer(line)
-        for prod in _parse_line(lexer):
+        for prod in _parse_line(lexer, cwd):
+            if isinstance(prod, ImportCommand):
+                commands.append(prod)
+                continue
             rules.append(prod)
             if start_symbol is None:
                 # first defined rule is start symbol
@@ -229,7 +240,7 @@ def build_grammar(code):
                     variables.add(symbol.name)
                 elif isinstance(symbol, Terminal):
                     terminals.add(symbol.name)
-    return Grammar(variables, terminals, start_symbol, rules)
+    return (Grammar(variables, terminals, start_symbol, rules), commands)
 
 def _match(lexer, token_types, allow_empty=False):
     if not isinstance(token_types, list):
@@ -246,8 +257,13 @@ def _match(lexer, token_types, allow_empty=False):
         raise UnexpectedBNFToken(token.type_)
     return token
 
-def _parse_line(lexer):
-    rule_name = Variable(_match(lexer, 'RULE_NAME').lexeme)
+def _parse_line(lexer, cwd):
+    token = _match(lexer, ['RULE_NAME', 'IMPORT_COMMAND']) 
+    if token.type_ == 'IMPORT_COMMAND':
+        token = _match(lexer, 'IMPORT_ARGUMENT')
+        return [ImportCommand(token.lexeme, cwd)]
+    # not a command, continue with regular BNF
+    rule_name = Variable(token.lexeme)
     _match(lexer, 'RULE_DEFINITION')
     productions = _parse_productions(lexer)
     for prod in productions:
