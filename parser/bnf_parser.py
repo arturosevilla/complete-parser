@@ -2,7 +2,7 @@
 Simple parser and structure containing the grammar defined in BNF
 """
 
-from .bnf_lexer import Lexer
+from bnf_lexer import Lexer
 import re
 
 class UnexpectedBNFToken(Exception):
@@ -149,10 +149,37 @@ class Item(object):
         self.production.extend(production.production[position:])
 
     def advance(self):
-        pos = self.production.find('.')
+        pos = self.production.index('.')
         if pos == len(self.production) - 1:
             return self
         return Item(self._original_prod, pos + 1)
+
+    def __hash__(self):
+        return hash((
+            self.variable,
+            str(self._original_prod),
+            self.production.index('.')
+        ))
+
+    def _get_prod_string(self):
+        buff = ''
+        for sym in self.production:
+            if sym == '':
+                buff += '(empty)'
+            if sym == '.':
+                buff += ' . '
+            elif isinstance(sym, Terminal):
+                buff += '"' + sym.name + '"'
+            else:
+                buff += '<' + sym.name + '>'
+        return buff
+
+
+    def __str__(self):
+        return self.variable.name + ' -> ' + self._get_prod_string()
+
+    def __repr__(self):
+        return str(self)
 
     def __eq__(self, other):
         if not isinstance(other, Item):

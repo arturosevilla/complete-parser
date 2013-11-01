@@ -1,4 +1,4 @@
-from .bnf_parser import Item, Variable, Terminal
+from bnf_parser import Item, Variable, Terminal
 from itertools import chain
 
 def closure(items, grammar):
@@ -7,9 +7,10 @@ def closure(items, grammar):
     last_size = len(closed)
     while added:
         added = False
+        closed_iter = set(closed)
         for item in closed:
             len_right = len(item.production)
-            pos = item.production.find('.')
+            pos = item.production.index('.')
             if pos == -1 or pos == len_right - 1:
                 continue
             next_symbol = item.production[pos + 1]
@@ -17,10 +18,11 @@ def closure(items, grammar):
                 for rule in grammar.get_productions_for_variable(
                     next_symbol.name
                 ):
-                    closed.add(Item(rule, 0))
-                    added = len(closed) > last_size
+                    closed_iter.add(Item(rule, 0))
+                    added = len(closed_iter) > last_size
                     if added:
-                        last_size = len(closed)
+                        last_size = len(closed_iter)
+        closed = closed_iter
     return closed
 
 def goto(items, symbol, grammar):
@@ -30,7 +32,7 @@ def goto(items, symbol, grammar):
     return acc
 
 def _individual_goto(item, symbol, grammar):
-    pos = item.production.find('.')
+    pos = item.production.index('.')
     if grammar.is_terminal(symbol):
         symbol = Terminal(symbol)
     elif grammar.is_variable(symbol):
@@ -42,22 +44,25 @@ def _individual_goto(item, symbol, grammar):
     return closure(new_item, grammar)
 
 def items(grammar):
-    c = closure(
-        [Item(grammar.get_productions_for_variable('#')[0], 0)],
-        grammar
-    )
+    c = [
+        closure(
+            [Item(grammar.get_productions_for_variable('#')[0], 0)],
+            grammar
+        )
+    ]
     added = True
     while added:
         added = False
         update_set = set()
         last_size = len(c)
-        for item in c:
+        print c
+        for citems in c:
             for symbol in chain(grammar.terminals, grammar.variables):
-                goto_symbols = goto(items, symbol, grammar)
+                goto_symbols = goto(citems, symbol, grammar)
                 if len(goto_symbols) > 0:
                     update_set.update(goto_symbols)
         if len(update_set) > 0:
-            c.update(update_set)
+            c.append(update_set)
         added = len(c) > last_size
         last_size = len(c)
     return c

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from bnf_parser import build_grammar
+from slr import items
 from itertools import chain
 import sys
 
@@ -17,4 +18,5 @@ if __name__ == '__main__':
     print 'Follows'
     for symbol in g.variables:
         print 'follow(', symbol, ') = ', g.follow(symbol)
-
+    print 'Items'
+    print items(g)
