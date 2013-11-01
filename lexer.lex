@@ -12,6 +12,6 @@ while			WHILE
 +|-		SUM_OPERATOR
 {			OPEN_BRACE
 }			CLOSE_BRACE
-[A-Za-z_][A-Za-z0-9]*	ID
+[A-Za-z_][A-Za-z0-9_]*	ID
 [0-9][0-9]*		NUMBER
 =			ASSIGN
