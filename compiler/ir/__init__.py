@@ -26,6 +26,18 @@ class Quadruple(object):
             return line
 
 
+class BasicBlock(object):
+    def __init__(self, instructions):
+        self.instructions = instructions
+
+    def __str__(self):
+        code = []
+        labels = []
+        for q in self.instructions:
+            code.append(' ' * 8 + str(q))
+        return '\n'.join(code)
+
+
 class QTable(object):
 
     def __init__(self):
@@ -35,6 +47,26 @@ class QTable(object):
     def append(self, instruction):
         self.qtable.append(instruction)
         self.next_instruction += 1
+
+    def get_basic_blocks(self):
+        leaders = []
+        next_is_leader = False
+        for i, inst in enumerate(self.qtable):
+            if next_is_leader:
+                leaders.append(i)
+                next_is_leader = False
+            if inst.op == 'goto' or inst.op == 'if': 
+                target = int(inst.result)
+                if target < len(self.qtable):
+                    leaders.append(int(inst.result))
+                next_is_leader = True
+        last_leader = 0
+        leaders.sort()
+        for leader in set(leaders):
+            block = BasicBlock(self.qtable[last_leader:leader])
+            last_leader = leader
+            yield block
+        yield BasicBlock(self.qtable[last_leader:])
 
     def __getitem__(self, index):
         return self.qtable[index]

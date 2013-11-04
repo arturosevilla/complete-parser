@@ -72,4 +72,7 @@ if __name__ == '__main__':
     gen = IRGenerator(sem)
     for program in gen.generate():
         print str(program)
+        for i, block in enumerate(program.get_basic_blocks()):
+            print 'Basic block ' + str(i + 1)
+            print str(block)
 
