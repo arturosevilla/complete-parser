@@ -33,7 +33,6 @@ class BasicBlock(object):
 
     def __str__(self):
         code = []
-        labels = []
         for q in self.instructions:
             code.append(' ' * 8 + str(q))
         return '\n'.join(code)
@@ -56,7 +55,7 @@ class QTable(object):
             if next_is_leader:
                 leaders.append(i)
                 next_is_leader = False
-            if inst.op == 'goto' or inst.op == 'if': 
+            if inst.op == 'goto' or inst.op[:2] == 'if': 
                 target = int(inst.result)
                 if target < len(self.qtable):
                     leaders.append(int(inst.result))
@@ -78,7 +77,7 @@ class QTable(object):
         for q in self.qtable:
             if q.op == 'goto':
                 labels.append((int(q.result), 'L' + q.result + ':'))
-            elif q.op == 'if':
+            elif q.op[:2] == 'if':
                 labels.append((int(q.result), 'L' + q.result + ':'))
             code.append(' ' * 8 + str(q))
         for label in labels:

@@ -19,7 +19,7 @@ if __name__ == '__main__':
     # i = 0;
     # counter = 0;
     # while (i < 100) {
-    #   if (i % 2 == 0) {
+    #   if (i % 2 == 0 && i % 3 == 0) {
     #       counter = counter + 1;
     #   }
     # }
@@ -44,14 +44,26 @@ if __name__ == '__main__':
                             ConstExpression(100)
                         ),
                         IfExpression(
-                            ComparisonExpression(
-                                '==',
-                                OperationExpression(
-                                    '%',
-                                    SymbolExpression('i'),
-                                    ConstExpression(2)
+                            BoolOperationExpression(
+                                'and',
+                                ComparisonExpression(
+                                    '==',
+                                    OperationExpression(
+                                        '%',
+                                        SymbolExpression('i'),
+                                        ConstExpression(2)
+                                    ),
+                                    ConstExpression(0)
                                 ),
-                                ConstExpression(0)
+                                ComparisonExpression(
+                                    '==',
+                                    OperationExpression(
+                                        '%',
+                                        SymbolExpression('i'),
+                                        ConstExpression(3)
+                                    ),
+                                    ConstExpression(0)
+                                )
                             ),
                             AssignmentExpression(
                                 SymbolExpression('counter'),

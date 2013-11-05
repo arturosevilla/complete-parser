@@ -53,10 +53,16 @@ class BoolOperationExpression(BoolExpression):
             self.true.extend(self.left.true)
             for inst in self.left.false:
                 qtable[inst].result = str(qtable.next_instruction)
+            self.right.generate_ir(qtable, env)
+            self.true.extend(self.right.true)
+            self.false.extend(self.right.false)
         elif self.op == 'and':
             self.false.extend(self.left.false)
             for inst in self.left.true:
                 qtable[inst].result = str(qtable.next_instruction)
+            self.right.generate_ir(qtable, env)
+            self.true.extend(self.right.true)
+            self.false.extend(self.right.false)
         elif self.op == 'not':
             self.true.extend(self.left.false)
             self.false.extend(self.right.true)
