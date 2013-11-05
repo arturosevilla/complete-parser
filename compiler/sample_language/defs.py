@@ -73,21 +73,14 @@ class ComparisonExpression(BoolExpression):
         self.right = right
 
     def generate_ir(self, qtable, env):
-        gen_result = Temp('bool').generate_ir(qtable, env)
         left = self.left.generate_ir(qtable, env)
         right = self.right.generate_ir(qtable, env)
-        qtable.append(Quadruple(
-            self.op,
-            left,
-            right,
-            gen_result
-        ))
         self.true.append(qtable.next_instruction)
         self.false.append(qtable.next_instruction + 1)
         qtable.append(Quadruple(
-            'if',
-            gen_result,
-            None,
+            'if' + self.op,
+            left,
+            right,
             None # will change
         ))
         qtable.append(Quadruple(

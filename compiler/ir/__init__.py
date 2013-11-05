@@ -17,8 +17,9 @@ class Quadruple(object):
     def __str__(self):
         if self.op == 'goto':
             return 'goto L' + self.result
-        elif self.op == 'if':
-            return 'if ' + self.arg1 + ' goto L' + self.result
+        elif self.op[:2] == 'if':
+            return 'if ' + self.arg1 + ' ' + self.op[2:] + ' ' + self.arg2 + \
+                   ' goto L' + self.result
         else:
             line = self.result + ' = ' + self.arg1
             if self.op != '=':
