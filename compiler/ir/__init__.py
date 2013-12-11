@@ -28,8 +28,18 @@ class Quadruple(object):
 
 
 class BasicBlock(object):
-    def __init__(self, instructions):
+    def __init__(self, instructions, id_, jumps):
         self.instructions = instructions
+        self.id_ = id_
+        self.jumps = jumps
+        self.jumps[0] = 1
+
+    def get_jump(self, target):
+        return self.jumps[target]
+
+    def __iter__(self):
+        for inst in self.instructions:
+            yield inst
 
     def __str__(self):
         code = []
@@ -57,16 +67,23 @@ class QTable(object):
                 next_is_leader = False
             if inst.op == 'goto' or inst.op[:2] == 'if': 
                 target = int(inst.result)
-                if target < len(self.qtable):
-                    leaders.append(int(inst.result))
+                if target < len(self.qtable) and target != 0:
+                    leaders.append(target)
                 next_is_leader = True
         last_leader = 0
         leaders.sort()
-        for leader in set(leaders):
-            block = BasicBlock(self.qtable[last_leader:leader])
+        leaders = set(leaders)
+        # +2 because the first one is going to be for 0
+        jumps = {leader: id_ + 2 for id_, leader in enumerate(leaders)}
+        for id_, leader in enumerate(leaders):
+            block = BasicBlock(
+                self.qtable[last_leader:leader],
+                id_ + 1,
+                jumps
+            )
             last_leader = leader
             yield block
-        yield BasicBlock(self.qtable[last_leader:])
+        yield BasicBlock(self.qtable[last_leader:], id_ + 2, jumps)
 
     def __getitem__(self, index):
         return self.qtable[index]
