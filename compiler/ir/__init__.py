@@ -75,6 +75,7 @@ class QTable(object):
         leaders = set(leaders)
         # +2 because the first one is going to be for 0
         jumps = {leader: id_ + 2 for id_, leader in enumerate(leaders)}
+        jumps[len(self.qtable)] = 'END'
         for id_, leader in enumerate(leaders):
             block = BasicBlock(
                 self.qtable[last_leader:leader],

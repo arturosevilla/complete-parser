@@ -44,7 +44,7 @@ class CodeGenerator(object):
         to_preserve = set()
         for block in self.basic_blocks:
             main_code.extend(self._generate_assembly(block, to_preserve))
-
+        main_code.append('LEND:')
         main_code = self._generate_preserve_variables(main_code, to_preserve)
         main_code = self._generate_preamble() + main_code
         main_code.extend(self._generate_end())
@@ -55,6 +55,7 @@ class CodeGenerator(object):
         preamble = [self.prefix + 'pushl %ebp', self.prefix + 'movl %esp, %ebp']
         if len(self.temp_variables) > 0:
             preamble.append('subl $' + len(self.temp_variables) + ', %esp')
+        return preamble
 
     def _generate_end(self):
         return [self.prefix + 'movl %ebp, %esp', self.prefix + 'popl %ebp']
@@ -72,9 +73,7 @@ class CodeGenerator(object):
         return preserve_inst + assembly + post_preserver_inst
 
     def _generate_jump_code(self, assembly, block, line):
-        assembly.append(
-            self.prefix + 'jmp L' + str(block.get_jump(line.result))
-        )
+        return [self.prefix + 'jmpl L' + str(block.get_jump(line.result))]
 
     def _issue_load(self, assembly, source, destination):
         self.registers[destination]['variables'] = set()
@@ -96,14 +95,14 @@ class CodeGenerator(object):
 
     def _issue_store(self, assembly, source, variable):
         assembly.append(
-            self.prefix + 'movl %' + source ', ' + self._get_store(variable)
+            self.prefix + 'movl %' + source + ', ' + self._get_store(variable)
         )
         self.address[variable]['memory'] = True
 
     def _handle_argument(self, assembly, argument, register):
         if self._is_constant(argument) or \
            not argument in self.registers[register]['variables']:
-            self._issue_load(self, assemby, argument, register)
+            self._issue_load(assembly, argument, register)
 
     def _generate_conditional_code(self, assembly, block, line, to_preserve):
         reg_res, reg_arg1, reg_arg2 = self._get_registers(
@@ -116,15 +115,16 @@ class CodeGenerator(object):
         )
         self._handle_argument(assembly, line.arg1, reg_arg1)
         self._handle_argument(assembly, line.arg2, reg_arg2)
-        assembly.append(self.prefix + 'cmpl %' + reg_arg2 + ', %' + reg_arg1)
-        jump_type = self.jump_types.get(self.op[2:])
+        after_store = [self.prefix + 'cmpl %' + reg_arg2 + ', %' + reg_arg1]
+        jump_type = self.jump_types.get(line.op[2:])
         if jump_type is None:
             raise NotImplementedError(self.op + ' operator unknown')
-        assembly.append(
+        after_store.append(
             self.prefix + jump_type + ' L' + str(block.get_jump(line.result))
         )
+        return after_store
 
-    def _generate_assignment(self, assembly, block, line, to_preserve)
+    def _generate_assignment(self, assembly, block, line, to_preserve):
         reg_res, reg_arg1, _ = self._get_registers(
             assembly,
             line.op,
@@ -139,7 +139,7 @@ class CodeGenerator(object):
         self.address[line.result]['registers'] = set([reg_arg1])
         self.address[line.result]['memory'] = False
 
-    def _handle_sum(self, instruction, assembly, block, line, to_preserve):
+    def _handle_sum(self, instruction, assembly, line, to_preserve):
         # x86 handles addition and substraction with source and destination
         # registers, so addl a, b means b += a so first we need to check if
         # argument b is loaded in memory, if not, then issue a store
@@ -155,11 +155,11 @@ class CodeGenerator(object):
             line.result,
             to_preserve
         )
-        self._handle_argument(self, assembly, line.arg1, reg_arg1)
+        self._handle_argument(assembly, line.arg1, reg_arg1)
         if self._is_constant(line.arg2):
             value_arg2 = '$' + str(line.arg2)
         else:
-            self._handle_argument(self, assembly, line.arg2, reg_arg2)
+            self._handle_argument(assembly, line.arg2, reg_arg2)
             value_arg2 = '%' + reg_arg2
 
         if not self._is_constant(line.arg1):
@@ -189,11 +189,12 @@ class CodeGenerator(object):
         self._reset_register_descriptors()
         self._reset_address_descriptors()
         assembly = ['L' + str(block.id_) + ':']
+        after_store = []
         for line in block:
             if line.op == 'goto':
-                self._generate_jump_code(assembly, block, line)
+                after_store = self._generate_jump_code(assembly, block, line)
             elif line.op[:2] == 'if':
-                self._generate_conditional_code(
+                after_store = self._generate_conditional_code(
                     assembly,
                     block,
                     line,
@@ -214,6 +215,9 @@ class CodeGenerator(object):
             # retrieve only one element from set
             source_reg = iter(descriptor['registers']).next()
             self._issue_store(assembly, source_reg, variable)
+
+        if len(after_store) > 0:
+            assembly.extend(after_store)
 
         return assembly
 
