@@ -73,7 +73,7 @@ class CodeGenerator(object):
         return preserve_inst + assembly + post_preserver_inst
 
     def _generate_jump_code(self, assembly, block, line):
-        return [self.prefix + 'jmpl L' + str(block.get_jump(line.result))]
+        return [self.prefix + 'jmp L' + str(block.get_jump(line.result))]
 
     def _issue_load(self, assembly, source, destination):
         self.registers[destination]['variables'] = set()
@@ -248,7 +248,8 @@ class CodeGenerator(object):
         assembly,
         argument,
         other_argument,
-        to_preserve
+        to_preserve,
+        locked=[]
     ):
         if argument is None:
             return None
@@ -264,7 +265,7 @@ class CodeGenerator(object):
             pass
 
         for register, descriptor in self.registers.iteritems():
-            if len(descriptor['variables']) == 0:
+            if len(descriptor['variables']) == 0 and register not in locked:
                 if descriptor['preserve']:
                     to_preserve.add(register)
                 return register
@@ -274,6 +275,8 @@ class CodeGenerator(object):
         min_spill = len(self.registers) * 2
         min_spill_register = None
         for register, descriptor in self.registers.iteritems():
+            if register in locked:
+                continue
             register_spill = 0
             for variable in descriptor['variables']:
                 if self.address[variable]['memory']:
@@ -309,7 +312,10 @@ class CodeGenerator(object):
 
     def _get_registers(self, assembly, op, arg1, arg2, result, to_preserve):
         reg_arg1 = self._get_argument_register(assembly, arg1, arg2, to_preserve)
-        reg_arg2 = self._get_argument_register(assembly, arg2, arg1, to_preserve)
+        if arg1 == arg2:
+            reg_arg2 = reg_arg1
+        else:
+            reg_arg2 = self._get_argument_register(assembly, arg2, arg1, to_preserve, [reg_arg1])
         if op == '=' or op == '+':
             reg_result = reg_arg1
         else:
