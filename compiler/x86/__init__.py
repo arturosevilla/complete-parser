@@ -1,4 +1,4 @@
-class FakeQuadruple(object)
+class FakeQuadruple(object):
 
     def __init__(self, op, arg1, arg2, result):
         self.op = op
@@ -61,7 +61,10 @@ class CodeGenerator(object):
     def _generate_preamble(self):
         preamble = [self.prefix + 'pushl %ebp', self.prefix + 'movl %esp, %ebp']
         if len(self.temp_variables) > 0:
-            preamble.append('subl $' + len(self.temp_variables) + ', %esp')
+            preamble.append(
+                self.prefix +
+                'subl $' + str(4 * len(self.temp_variables)) + ', %esp'
+            )
         return preamble
 
     def _generate_end(self):
@@ -140,7 +143,7 @@ class CodeGenerator(object):
             line.result,
             to_preserve
         )
-        self._handle_argument(self, assembly, line.arg1, reg_arg1)
+        self._handle_argument(assembly, line.arg1, reg_arg1)
         # assume reg_arg1 == reg_res
         self.registers[reg_arg1]['variables'].add(line.result)
         self.address[line.result]['registers'] = set([reg_arg1])
@@ -155,7 +158,7 @@ class CodeGenerator(object):
         # Afterwards we need to tell the address descriptor and register
         # descriptor that we are holding the value of our target
         if self._is_constant(line.arg1) and self._is_constant(line.arg2):
-            if instruction == '+':
+            if line.op == '+':
                 result = int(line.arg1 + line.arg2)
             else:
                 result = int(line.arg1 - line.arg2)
@@ -196,19 +199,134 @@ class CodeGenerator(object):
         else:
             source, destination = value_arg1, value_arg2
 
-        if not self._is_constant(line.arg1):
+        if self._is_constant(line.arg1):
+            self.registers[reg_arg2]['variables'].discard(line.arg2)
+            self.address[line.arg2]['registers'].discard(reg_arg2)
+
+            if len(self.address[line.arg2]['registers']) == 0 and \
+               not self.address[line.arg2]['memory']:
+                self._issue_store(assembly, reg_arg2, line.arg2)
+
+        else:
             self.registers[reg_arg1]['variables'].discard(line.arg1)
             self.address[line.arg1]['registers'].discard(reg_arg1)
-        if len(self.address[line.arg1]['registers']) == 0 and \
-           not self.address[line.arg1]['memory']:
-            self._issue_store(assembly, reg_arg1, line.arg1)
+
+            if len(self.address[line.arg1]['registers']) == 0 and \
+               not self.address[line.arg1]['memory']:
+                self._issue_store(assembly, reg_arg1, line.arg1)
 
         assembly.append(
             self.prefix + instruction + ' ' + source + ', ' + destination
         )
-        self.registers[reg_arg1]['variables'].add(line.result)
-        self.address[line.result]['registers'] = set([reg_arg1])
+        destination = destination[1:]
+        self.registers[destination]['variables'].add(line.result)
+        self.address[line.result]['registers'] = set([destination])
         self.address[line.result]['memory'] = False
+
+    def _handle_multiplication(self, assembly, line, to_preserve):
+        # Multiplication in x86 is done by using edx:eax = eax * other reg
+        # so it is necessary to backup edx and then load the constant into
+        # eax (if it is necessary)
+        if self._is_constant(line.arg1) and self._is_constant(line.arg2):
+            result = int(line.arg1 * line.arg2)
+            # inject an assignment
+            self._generate_assignment(
+                assembly,
+                FakeQuadruple('=', result, None, line.result),
+                to_preserve
+            )
+            return
+        for variable in self.registers['eax']['variables']:
+            self._issue_store(assembly, 'eax', variable)
+        for variable in self.registers['edx']['variables']:
+            self._issue_store(assembly, 'edx', variable)
+
+        if self._is_constant(line.arg1):
+            assembly.append(self.prefix + 'movl $' + str(line.arg1) + ', %eax')
+            argument = line.arg2
+            other_argument = line.arg1
+        elif self._is_constant(line.arg2):
+            assembly.append(self.prefix + 'movl $' + str(line.arg2) + ', %eax')
+            argument = line.arg1
+            other_argument = line.arg2
+        else:
+            # no constants
+            if 'eax' not in self.address[line.arg1]['registers']:
+                assembly.append(
+                    self.prefix +
+                    'movl ' + self._get_store(line.arg1) + ', %eax'
+                )
+            argument = line.arg2
+            other_argument = line.arg1
+
+        reg_arg2 = self._get_argument_register(
+            assembly,
+            argument,
+            other_argument,
+            to_preserve,
+            locked=['eax', 'edx']
+        )
+        assembly.append(self.prefix + 'movl ' + argument + ', %' + reg_arg2)
+        assembly.append(self.prefix + 'mull %' + reg_arg2)
+        self.address[argument]['registers'].add(reg_arg2)
+        self.registers[reg_arg2]['variables'].add(argument)
+
+        self.registers['eax']['variables'].add(line.result)
+        self.address[line.result]['registers'] = set(['eax'])
+        self.address[line.result]['memory'] = False
+
+    def _handle_division(self, assembly, line, to_preserve, result_register):
+        # Division is similar to multiplication, a = a / b and d = a % b
+        if self._is_constant(line.arg1) and self._is_constant(line.arg2):
+            result = int(line.arg1 / line.arg2)
+            # inject an assignment
+            self._generate_assignment(
+                assembly,
+                FakeQuadruple('=', result, None, line.result),
+                to_preserve
+            )
+            return
+
+        for variable in self.registers['eax']['variables']:
+            self._issue_store(assembly, 'eax', variable)
+        for variable in self.registers['edx']['variables']:
+            self._issue_store(assembly, 'edx', variable)
+
+        if self._is_constant(line.arg1):
+            assembly.append(self.prefix + 'movl $' + str(line.arg1) + ', %eax')
+        else:
+            if 'eax' not in self.address[line.arg1]['registers']:
+                assembly.append(
+                    self.prefix +
+                    'movl ' + self._get_store(line.arg1) + ', %eax'
+                )
+
+        reg_arg2 = self._get_argument_register(
+            assembly,
+            line.arg2,
+            line.arg1,
+            to_preserve,
+            locked=['eax', 'edx']
+        )
+
+        if self._is_constant(line.arg2):
+            argument = '$' + str(line.arg2)
+            assembly.append(self.prefix + 'movl ' + argument + ', %' + reg_arg2)
+        else:
+            if reg_arg2 not in self.registers[reg_arg2]['variables']:
+                assembly.append(
+                    self.prefix +
+                    'movl ' + self._get_store(line.arg2) + ', %' + reg_arg2
+                )
+            self.address[line.arg2]['registers'].add(reg_arg2)
+            self.registers[reg_arg2]['variables'].add(line.arg2)
+
+        assembly.append(self.prefix + 'divl %' + reg_arg2)
+
+        self.registers[result_register]['variables'].add(line.result)
+        self.address[line.result]['registers'] = set([result_register])
+        self.address[line.result]['memory'] = False
+
 
     def _generate_arithmetic(self, assembly, block, line, to_preserve):
         if line.op == '+' or line.op == '-':
@@ -218,6 +336,14 @@ class CodeGenerator(object):
                 line,
                 to_preserve
             )
+        elif line.op == '*':
+            self._handle_multiplication(assembly, line, to_preserve)
+        elif line.op == '%':
+            self._handle_division(assembly, line, to_preserve, 'edx')
+        elif line.op == '/':
+            self._handle_division(assembly, line, to_preserve, 'eax')
+        else:
+            raise NotImplementedError('Unknown operator: ' + line.op)
 
     def _generate_assembly(self, block, to_preserve):
         self._reset_register_descriptors()
