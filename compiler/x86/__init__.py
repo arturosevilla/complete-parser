@@ -1,3 +1,10 @@
+class FakeQuadruple(object)
+
+    def __init__(self, op, arg1, arg2, result):
+        self.op = op
+        self.arg1 = arg1
+        self.arg2 = arg2
+        self.result = result
 
 
 class CodeGenerator(object):
@@ -124,7 +131,7 @@ class CodeGenerator(object):
         )
         return after_store
 
-    def _generate_assignment(self, assembly, block, line, to_preserve):
+    def _generate_assignment(self, assembly, line, to_preserve):
         reg_res, reg_arg1, _ = self._get_registers(
             assembly,
             line.op,
@@ -147,6 +154,19 @@ class CodeGenerator(object):
         # to be stored on the same spot, i.e., original instruction: a += b
         # Afterwards we need to tell the address descriptor and register
         # descriptor that we are holding the value of our target
+        if self._is_constant(line.arg1) and self._is_constant(line.arg2):
+            if instruction == '+':
+                result = int(line.arg1 + line.arg2)
+            else:
+                result = int(line.arg1 - line.arg2)
+            # inject an assignment
+            self._generate_assignment(
+                assembly,
+                FakeQuadruple('=', result, None, line.result),
+                to_preserve
+            )
+            return
+
         reg_res, reg_arg1, reg_arg2 = self._get_registers(
             assembly,
             '+',
@@ -155,12 +175,26 @@ class CodeGenerator(object):
             line.result,
             to_preserve
         )
-        self._handle_argument(assembly, line.arg1, reg_arg1)
+
+        arg1_is_destination = False
+        if self._is_constant(line.arg1): 
+            value_arg1 = '$' + str(line.arg1)
+        else:
+            self._handle_argument(assembly, line.arg1, reg_arg1)
+            value_arg1 = '%' + reg_arg1
+            arg1_is_destination = True
+
+
         if self._is_constant(line.arg2):
             value_arg2 = '$' + str(line.arg2)
         else:
             self._handle_argument(assembly, line.arg2, reg_arg2)
             value_arg2 = '%' + reg_arg2
+
+        if arg1_is_destination:
+            source, destination = value_arg2, value_arg1
+        else:
+            source, destination = value_arg1, value_arg2
 
         if not self._is_constant(line.arg1):
             self.registers[reg_arg1]['variables'].discard(line.arg1)
@@ -170,7 +204,7 @@ class CodeGenerator(object):
             self._issue_store(assembly, reg_arg1, line.arg1)
 
         assembly.append(
-            self.prefix + instruction + ' ' + value_arg2 + ', %' + reg_arg1
+            self.prefix + instruction + ' ' + source + ', ' + destination
         )
         self.registers[reg_arg1]['variables'].add(line.result)
         self.address[line.result]['registers'] = set([reg_arg1])
@@ -201,7 +235,7 @@ class CodeGenerator(object):
                     to_preserve
                 )
             elif line.op == '=':
-                self._generate_assignment(assembly, block, line, to_preserve)
+                self._generate_assignment(assembly, line, to_preserve)
             else:
                 self._generate_arithmetic(assembly, block, line, to_preserve)
 
@@ -315,7 +349,13 @@ class CodeGenerator(object):
         if arg1 == arg2:
             reg_arg2 = reg_arg1
         else:
-            reg_arg2 = self._get_argument_register(assembly, arg2, arg1, to_preserve, [reg_arg1])
+            reg_arg2 = self._get_argument_register(
+                assembly,
+                arg2,
+                arg1,
+                to_preserve,
+                [reg_arg1]
+            )
         if op == '=' or op == '+':
             reg_result = reg_arg1
         else:
