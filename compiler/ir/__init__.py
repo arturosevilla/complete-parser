@@ -76,6 +76,7 @@ class QTable(object):
         # +2 because the first one is going to be for 0
         jumps = {leader: id_ + 2 for id_, leader in enumerate(leaders)}
         jumps[len(self.qtable)] = 'END'
+        total = len(leaders)
         for id_, leader in enumerate(leaders):
             block = BasicBlock(
                 self.qtable[last_leader:leader],
@@ -84,7 +85,7 @@ class QTable(object):
             )
             last_leader = leader
             yield block
-        yield BasicBlock(self.qtable[last_leader:], id_ + 2, jumps)
+        yield BasicBlock(self.qtable[last_leader:], total + 1, jumps)
 
     def __getitem__(self, index):
         return self.qtable[index]
